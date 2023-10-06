@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "types": ["node"],                         
+    "resolveJsonModule": true,
+    "allowJs": true,                                 
+    "outDir": "./dist",
+    "removeComments": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.js", "src/**/*.ts", "src/**/*.json"],
+  "exclude": ["node_modules", "dist"]
+}

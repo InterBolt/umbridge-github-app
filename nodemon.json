@@ -1,0 +1,6 @@
+{
+  "ignore": ["node_modules"],
+  "watch": ["src", ".env"],
+  "exec": "yarn compile && run-p expose start",
+  "ext": "ts"
+}
