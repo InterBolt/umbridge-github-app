@@ -1,15 +1,14 @@
 import { App } from "octokit";
 import { createAppAuth } from "@octokit/auth-app";
-import { graphql } from "@octokit/graphql";
 import { request } from "@octokit/request";
 import fs from "fs";
 import { GithubConfig } from "../config";
+import logger from "signale";
 
 class GithubService {
   app!: App;
   requestCount = 0;
-  restOctokit!: ReturnType<typeof request.defaults>;
-  gqlOctokit!: ReturnType<typeof graphql.defaults>;
+  doRestRequest!: ReturnType<typeof request.defaults>;
   installationId!: number;
 
   constructor() {
@@ -20,13 +19,12 @@ class GithubService {
         secret: GithubConfig.webhookSecret,
       },
     });
+
+    this.trackRequestsInterval();
   }
 
   init = async (retries: number = 0) => {
-    if (
-      typeof this.restOctokit !== "undefined" &&
-      typeof this.gqlOctokit !== "undefined"
-    ) {
+    if (typeof this.doRestRequest !== "undefined") {
       return;
     }
 
@@ -40,8 +38,13 @@ class GithubService {
     );
 
     if (orgInstallations.length !== 1) {
-      console.log(`retrying in 5 seconds. attempt #${retries}`);
-      await new Promise((resolve) => setTimeout(() => resolve(null), 5000));
+      const retrySeconds = 10;
+      logger.warn(
+        `No installations found for org: ${GithubConfig.org}. Retrying in ${retrySeconds} seconds...`
+      );
+      await new Promise((resolve) =>
+        setTimeout(() => resolve(null), retrySeconds * 1000)
+      );
       await this.init(retries + 1);
     }
 
@@ -53,34 +56,26 @@ class GithubService {
       installationId: this.installationId,
     });
 
-    const graphqlWithAuth = graphql.defaults({
+    const restWithAuth = request.defaults({
       request: {
         hook: auth.hook,
       },
     });
 
-    const requestWithAuth = request.defaults({
-      request: {
-        hook: auth.hook,
-      },
-    });
-
-    const restOctokit = (url: string, opts: any) => {
+    const doRestRequest = (url: string, opts: any) => {
       this.requestCount++;
-      return requestWithAuth(url, opts);
+      return restWithAuth(url, opts);
     };
 
-    const gqlOctokit = (query: string, vars: any) => {
-      this.requestCount++;
-      return graphqlWithAuth(query, vars);
-    };
+    this.doRestRequest = doRestRequest as typeof restWithAuth;
 
-    this.gqlOctokit = gqlOctokit as typeof graphqlWithAuth;
-    this.restOctokit = restOctokit as typeof requestWithAuth;
+    logger.info(`Github service initialized for app: ${GithubConfig.appId}`);
   };
 
   getRepos = async () => {
-    const reposResponse = await this.restOctokit(
+    await this.init();
+
+    const reposResponse = await this.doRestRequest(
       "GET /installation/repositories",
       {
         headers: {
@@ -97,9 +92,11 @@ class GithubService {
   };
 
   getPRs = async (repos: Array<string>) => {
+    await this.init();
+
     const repoPRs = await Promise.all(
       repos.map(async (repo) => {
-        const issuesCommentsResponse = await this.restOctokit(
+        const issuesCommentsResponse = await this.doRestRequest(
           "GET /repos/{owner}/{repo}/issues/comments",
           {
             headers: {
@@ -143,7 +140,7 @@ class GithubService {
 
     const allPrReviews = await Promise.all(
       formattedPRs.map((pr) =>
-        this.restOctokit(
+        this.doRestRequest(
           "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
           {
             owner: GithubConfig.org,
@@ -187,7 +184,9 @@ class GithubService {
   };
 
   approve = async (repo: string, prNumber: number) => {
-    await this.restOctokit(
+    await this.init();
+
+    await this.doRestRequest(
       "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
       {
         owner: GithubConfig.org,
@@ -203,7 +202,9 @@ class GithubService {
   };
 
   dismiss = async (repo: string, prNumber: number, reviewId: number) => {
-    await this.restOctokit(
+    await this.init();
+
+    await this.doRestRequest(
       "PUT /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/dismissals",
       {
         owner: GithubConfig.org,
@@ -220,7 +221,9 @@ class GithubService {
   };
 
   commentOnPR = async (repo: string, prNumber: number, comment: string) => {
-    await this.restOctokit(
+    await this.init();
+
+    await this.doRestRequest(
       "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
       {
         owner: GithubConfig.org,
@@ -234,8 +237,12 @@ class GithubService {
     );
   };
 
-  getRequestCount = () => this.requestCount;
-  resetRequestCount = () => (this.requestCount = 0);
+  trackRequestsInterval = () => {
+    setInterval(() => {
+      logger.info(`Github requests in last 5 minutes: ${this.requestCount}`);
+      this.requestCount = 0;
+    }, 1000 * 60 * 5);
+  };
 }
 
 const github = new GithubService();

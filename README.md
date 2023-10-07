@@ -1,4 +1,8 @@
+# About
+
 For more information on this repo, see the associated blog post: [https://interbolt.org/blog/github-pr-guidelines-bot/](https://interbolt.org/blog/github-pr-guidelines-bot/).
+
+# Hire me
 
 You can reach me at [cc13.engineering@gmail.com](cc13.engineering@gmail.com) if you have questions.
 

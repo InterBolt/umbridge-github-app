@@ -3,27 +3,28 @@ import http from "http";
 import { ServerConfig } from "./config";
 import { handlePollReactions, handleEventPROpened } from "./handlers";
 import github from "./services/github";
+import logger from "signale";
 
 const pollServer = () => {
-  console.log(`Server is polling for events every 7 seconds.`);
+  logger.info(
+    `Polling server started with interval: ${ServerConfig.pollingInterval}ms`
+  );
   setInterval(async () => {
     try {
       await handlePollReactions();
     } catch (error: any) {
-      console.log("Polling server threw an error.");
-      console.error(error);
+      logger.error(error);
     }
-  }, 7000);
+  }, ServerConfig.pollingInterval);
 };
 
 const webhookServer = () => {
   github.app.webhooks.on("pull_request.opened", handleEventPROpened);
   github.app.webhooks.onError((error) => {
     if (error.name === "AggregateError") {
-      console.error(`Error processing request: ${error.event}`);
-    } else {
-      console.error(error);
+      logger.error(`Error processing request: ${error.event}`);
     }
+    logger.error(error);
   });
 
   const middleware = createNodeMiddleware(github.app.webhooks, {
@@ -33,8 +34,7 @@ const webhookServer = () => {
   const eventServer = http.createServer(middleware);
 
   eventServer.listen(ServerConfig.port, () => {
-    console.log(`Server is listening for events on port: ${ServerConfig.port}`);
-    console.log("Press Ctrl + C to quit.");
+    logger.info(`Event server listening on port: ${ServerConfig.port}`);
   });
 };
 

@@ -1,21 +1,15 @@
 {
   "name": "umbridge-github-bot",
   "version": "1.0.0",
-  "description": "A bot to nag developers to review documentation when they open a pull request.",
+  "description": "A bot to encourage coding guidelines in my organization.",
   "main": "server.js",
-  "engineStrict": true,
-  "engines": {
-    "yarn": "1.22.19",
-    "npm": "9.5.0",
-    "node": "18.15.0"
-  },
   "scripts": {
     "dev": "nodemon",
     "expose": "node ./bin/smee.js",
     "start": "node dist/server.js",
     "compile": "tsc"
   },
-  "author": "",
+  "author": "Colin Campbell",
   "license": "MIT",
   "dependencies": {
     "@notionhq/client": "^2.2.13",
@@ -25,12 +19,14 @@
     "graphql-tag": "^2.12.6",
     "lodash": "^4.17.21",
     "notion-to-md": "^3.1.1",
-    "octokit": "^3.1.1"
+    "octokit": "^3.1.1",
+    "signale": "^1.4.0"
   },
   "devDependencies": {
     "@types/common-tags": "^1.8.2",
     "@types/dotenv": "^8.2.0",
     "@types/lodash": "^4.14.199",
+    "@types/signale": "^1.4.5",
     "nodemon": "^3.0.1",
     "npm-run-all": "^4.1.5",
     "smee-client": "^1.2.3",

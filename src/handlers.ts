@@ -1,5 +1,6 @@
 import github from "./services/github";
 import notion from "./services/notion";
+import logger from "signale";
 
 type TPullRequestOpenedHandler = Parameters<
   typeof github.app.webhooks.on<"pull_request.opened">
@@ -8,47 +9,31 @@ type TPullRequestOpenedHandler = Parameters<
 export const handleEventPROpened: TPullRequestOpenedHandler = async ({
   payload,
 }) => {
-  try {
-    await github.init();
+  const markdown = await notion.getMarkdown();
+  await github.commentOnPR(
+    payload.repository.name,
+    payload.pull_request.number,
+    markdown
+  );
 
-    const markdown = await notion.getMarkdown();
-    await github.commentOnPR(
-      payload.repository.name,
-      payload.pull_request.number,
-      markdown
-    );
-  } catch (error: any) {
-    if (error.response) {
-      console.error(
-        `Error! Status: ${error.response.status}. Message: ${error.response.data.message}`
-      );
-    }
-    console.error(error);
-  }
+  logger.success(`Posted guidelines to PR: ${payload.pull_request.html_url}`);
 };
 
 export const handlePollReactions = async () => {
-  try {
-    await github.init();
+  const repos = await github.getRepos();
+  const { prsToApprove, prsToDismiss } = await github.getPRs(repos);
+  const approvalPromises = prsToApprove.map((pr) =>
+    github.approve(pr.repo, pr.number)
+  );
+  const dismissalPromises = prsToDismiss.map((pr) =>
+    github.dismiss(pr.repo, pr.number, pr.approvalReviewId)
+  );
+  await Promise.all(approvalPromises.concat(dismissalPromises));
 
-    const startRequestCount = github.getRequestCount();
-    const repos = await github.getRepos();
-    const { prsToApprove, prsToDismiss } = await github.getPRs(repos);
-    const approvalPromises = prsToApprove.map((pr) =>
-      github.approve(pr.repo, pr.number)
-    );
-    const dismissalPromises = prsToDismiss.map((pr) =>
-      github.dismiss(pr.repo, pr.number, pr.approvalReviewId)
-    );
-    await Promise.all(approvalPromises.concat(dismissalPromises));
-
-    console.log(
-      `${
-        github.getRequestCount() - startRequestCount
-      } requests made to GitHub API`
-    );
-    github.resetRequestCount();
-  } catch (error: any) {
-    console.log(error);
+  if (approvalPromises.length) {
+    logger.success(`Approved ${approvalPromises.length} PRs`);
+  }
+  if (dismissalPromises.length) {
+    logger.success(`Dismissed ${dismissalPromises.length} previous PR reviews`);
   }
 };

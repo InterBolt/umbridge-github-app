@@ -18,6 +18,7 @@ if (!fs.existsSync(privateKeyPath)) {
 export const ServerConfig = {
   env: process.env.NODE_ENV || "production",
   port: Number(process.env.PORT) as number,
+  pollingInterval: Number(process.env.POLLING_INTERVAL) as number,
 };
 
 export const GithubConfig = {
