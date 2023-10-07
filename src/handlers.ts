@@ -34,7 +34,6 @@ export const handlePollReactions = async () => {
     const startRequestCount = github.getRequestCount();
     const repos = await github.getRepos();
     const { prsToApprove, prsToDismiss } = await github.getPRs(repos);
-    console.log(prsToApprove, prsToDismiss);
     const approvalPromises = prsToApprove.map((pr) =>
       github.approve(pr.repo, pr.number)
     );
